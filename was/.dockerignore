@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# Maven build output
+app/target/
+**/target/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Temporary files
+*.log
+*.tmp
+*.swp
+
+# Local secrets
+.env
+.env.*

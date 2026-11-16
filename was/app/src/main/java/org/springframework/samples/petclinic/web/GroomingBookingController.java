@@ -20,6 +20,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
 @RestController
 @RequestMapping("/api/grooming/bookings")
 public class GroomingBookingController {
@@ -100,6 +103,58 @@ public class GroomingBookingController {
         response.put("message", "예약이 접수됐습니다.");
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> updateBooking(
+            @PathVariable("id") Long id,
+            @RequestBody GroomingBookingRequest request) {
+            
+        Map<String, Object> response = new HashMap<>();
+    
+        // 1. 입력값 검증
+        if (id == null || id <= 0 || request == null
+                || blank(request.preferredDate)
+                || blank(request.preferredTime)) {
+                
+            response.put("message", "예약 ID와 날짜, 시간을 확인해주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
+    
+        // 2. 날짜와 시간을 Timestamp로 변환
+        final Timestamp preferredAt;
+    
+        try {
+            LocalDate date = LocalDate.parse(request.preferredDate.trim());
+            LocalTime time = LocalTime.parse(request.preferredTime.trim());
+    
+            preferredAt = Timestamp.valueOf(LocalDateTime.of(date, time));
+    
+        } catch (DateTimeParseException ex) {
+            response.put("message", "날짜와 시간 형식이 올바르지 않습니다.");
+            return ResponseEntity.badRequest().body(response);
+        }
+    
+        // 3. MySQL 예약 정보 수정
+        int updated = jdbcTemplate.update(
+            "UPDATE grooming_bookings SET preferred_at = ? WHERE id = ?",
+            preferredAt, id
+        );
+    
+        // 4. 예약 ID가 존재하지 않는 경우
+        if (updated == 0) {
+            response.put("message", "예약 정보를 찾을 수 없습니다.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+    
+        // 5. 수정 성공
+        response.put("id", id);
+        response.put("message", "예약 정보가 수정되었습니다.");
+        response.put("preferredDate", request.preferredDate.trim());
+        response.put("preferredTime", request.preferredTime.trim());
+    
+        return ResponseEntity.ok(response);
+    }
+
 
     private boolean blank(String value) {
         return value == null || value.trim().isEmpty();
